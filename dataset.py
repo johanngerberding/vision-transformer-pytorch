@@ -23,24 +23,25 @@ def preprocess(img, patch_size: int):
 
 class ImagenetteDataset(torch.utils.data.Dataset):
     def __init__(
-            self,
-            root: str,
-            annos: str,
-            mode: str,
-            label2id: dict,
-            img_size: tuple,
-            transform=None,
+        self,
+        root: str,
+        annos: str,
+        mode: str,
+        label2id: dict,
+        img_size: tuple,
+        patch_size: int,
+        transform=None,
     ):
         self.root = root
         self.mode = mode
         self.imgs = self.load_annos(annos, self.mode)
         self.transform = get_transform(self.mode, img_size)
         self.label2id = label2id
+        self.patch_size = patch_size
 
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.root, self.imgs[idx])
-        print(img_path)
         assert os.path.isfile(img_path)
         img = cv2.imread(img_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -51,7 +52,8 @@ class ImagenetteDataset(torch.utils.data.Dataset):
         if self.transform:
             img = self.transform(image=img)['image']
 
-        patches = preprocess(img)
+        patches = preprocess(img, self.patch_size)
+        patches = torch.stack(patches)
 
         return patches, label
 
