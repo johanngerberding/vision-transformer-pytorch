@@ -8,19 +8,30 @@ class VisionTransformer(nn.Module):
     def __init__(
         self,
         max_seq_len: int,
-        d_model: int = 512,
+        num_layers: int,
+        input_dim: int,
+        d_model: int = 1024,
         n_head: int = 8,
+        dim_feedforward: int = 2048,
         n_classes: int = 10,
-        pdrop=0.,
+        pdrop=0.1,
     ):
         super(VisionTransformer, self).__init__()
-        self.embed = nn.Linear(768, d_model)
-        self.pos = nn.Parameter(torch.zeros(max_seq_len + 1, d_model))
+        self.embed = nn.Linear(input_dim, d_model)
+        self.pos = nn.Parameter(torch.zeros(1, max_seq_len + 1, d_model))
         self.cls_token = nn.Parameter(torch.zeros(1, 1, d_model))
 
         self.transformer_layer = nn.TransformerEncoderLayer(
-            d_model=d_model, nhead=n_head, activation=F.gelu)
-        self.transformer = nn.TransformerEncoder(self.transformer_layer, num_layers=6)
+            d_model=d_model,
+            nhead=n_head,
+            dim_feedforward=dim_feedforward,
+            dropout=pdrop,
+            activation=F.gelu,
+            batch_first=True,
+        )
+        self.transformer = nn.TransformerEncoder(
+            self.transformer_layer,
+            num_layers=num_layers)
 
         self.mlp = nn.Linear(d_model, n_classes)
         self.drop = nn.Dropout(p=pdrop)
@@ -33,6 +44,7 @@ class VisionTransformer(nn.Module):
         # class token
         cls_token = self.cls_token.expand(x.shape[0], -1, -1)
         x = torch.cat((cls_token, x), dim=1)
+        # add positional embedding
         x = x + self.pos
 
         x = self.drop(x)
@@ -43,22 +55,3 @@ class VisionTransformer(nn.Module):
         x = self.mlp(cls_token_head)
         return x
 
-
-
-def main():
-    test = torch.randn(3, 160, 160)
-    patch_size = 16
-    patches = preprocess(test, patch_size)
-    patches = torch.stack(patches)
-    patches = patches.unsqueeze(0)
-    print(patches.size())
-
-    vision_transformer = VisionTransformer(max_seq_len=100, d_model=512)
-
-    out = vision_transformer(patches)
-    print(out.size())
-
-
-
-if __name__ == "__main__":
-    main()
