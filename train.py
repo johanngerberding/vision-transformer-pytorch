@@ -1,5 +1,7 @@
 import os
 import tqdm
+import datetime
+import shutil
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -71,39 +73,56 @@ def val_epoch(model, dataloader, loss_fn, device):
 
 
 def main():
-    wandb.init(project="vision-transformer-pytorch", entity="johanngerber")
+    wandb.init(
+        project="vision-transformer-pytorch",
+        entity="johanngerber",
+        config = {
+            "learning_rate": 0.0001,
+            "epochs": 100,
+            "train_batch_size": 256,
+            "val_batch_size": 128,
+            "image_size": (320,320),
+            "patch_size": 32,
+            "num_layers": 2,
+            "betas": (0.9, 0.999),
+            "eps": 1e-08,
+        },
+    )
+    config = wandb.config
+
+    """
+    sweep_config = {
+        'method': 'random',
+        'metric': {
+            'name': 'val_loss',
+            'goal': 'minimize'
+        },
+        'parameters': {
+
+        }
+    }
+    """
+
     root = "/home/johann/sonstiges/vision-transformer-pytorch"
     data = os.path.join(root, "data")
     imagenette = os.path.join(data, "imagenette2-320")
     annos = os.path.join(imagenette, "noisy_imagenette.csv")
-    img_size = (320, 320)
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    exp_dir = os.path.join(root, "exps/{}".format(today))
+    if os.path.isdir(exp_dir):
+        shutil.rmtree(exp_dir)
+    os.makedirs(exp_dir)
+
     label2id = {
         f: i for i, f in enumerate(list(sorted(os.listdir(
             os.path.join(imagenette, 'train')
         ))))
     }
-    patch_size = 32
-    lr = 0.003
-    betas = (0.9, 0.999)
-    eps = 1e-08
 
-    n_epochs = 50
-    train_batch_size = 128
-    val_batch_size = 64
-
-    max_seq_len = int((img_size[0] / patch_size) * (img_size[1] / patch_size))
-    num_layers = 4
-    input_dim = int(patch_size**2 * 3)
-
-    wandb.config = {
-        "learning_rate": 0.003,
-        "epochs": 50,
-        "train_batch_size": 128,
-        "val_batch_size": 64,
-        "image_size": (320, 320),
-        "patch_size": 32,
-        "num_layers": 4,
-    }
+    input_dim = int(config.patch_size**2 * 3)
+    max_seq_len = int(
+        (config.image_size[0] / config.patch_size) *
+        (config.image_size[1] / config.patch_size))
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(label2id)
@@ -113,8 +132,8 @@ def main():
         annos=annos,
         mode='train',
         label2id=label2id,
-        img_size=img_size,
-        patch_size=patch_size,
+        img_size=config.image_size,
+        patch_size=config.patch_size,
     )
 
     print(f"Training samples: {len(train_dataset)}")
@@ -124,15 +143,15 @@ def main():
         annos=annos,
         mode='val',
         label2id=label2id,
-        img_size=img_size,
-        patch_size=patch_size,
+        img_size=config.image_size,
+        patch_size=config.patch_size,
     )
 
     print(f"Validation samples: {len(val_dataset)}")
 
     train_dataloader = DataLoader(
         dataset=train_dataset,
-        batch_size=train_batch_size,
+        batch_size=config.train_batch_size,
         shuffle=True,
         num_workers=8,
     )
@@ -141,14 +160,14 @@ def main():
 
     val_dataloader = DataLoader(
         dataset=val_dataset,
-        batch_size=val_batch_size,
+        batch_size=config.val_batch_size,
         shuffle=False,
         num_workers=4,
     )
 
     model = VisionTransformer(
         max_seq_len=max_seq_len,
-        num_layers=num_layers,
+        num_layers=config.num_layers,
         input_dim=input_dim,
     )
     model.to(device)
@@ -159,15 +178,15 @@ def main():
 
     optimizer = torch.optim.Adam(
         model.parameters(),
-        lr=lr,
-        betas=betas,
-        eps=eps,
+        lr=config.learning_rate,
+        betas=config.betas,
+        eps=config.eps,
     )
 
     loss_fn = nn.CrossEntropyLoss().to(device)
 
 
-    for i in range(n_epochs):
+    for i in range(config.epochs):
         print(f"Epoch {i+1}")
         train_loss, train_acc = train_epoch(
             model,
@@ -190,6 +209,14 @@ def main():
                 "val_accuracy": val_acc,
             }
         )
+
+    checkpoints_dir = os.path.join(exp_dir, "checkpoints")
+    if not os.path.isdir(checkpoints_dir):
+        os.makedirs(checkpoints_dir)
+
+    out_model_path = os.path.join(checkpoints_dir, "final.pth")
+    torch.save(model, out_model_path)
+    print(f"Saved model checkpoint: {out_model_path}")
 
 
 

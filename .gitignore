@@ -1,5 +1,7 @@
 .env
 data 
+exps
+wandb
 
 *.ipynb
 __pycache__
