@@ -3,10 +3,13 @@ import os
 import tqdm
 import datetime
 import shutil
+import yaml 
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from dataset import ImagenetteDataset, get_transform
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+
+from dataset import ImagenetteDataset
 from model import VisionTransformer
 from utils import get_number_params
 from config import get_cfg_defaults 
@@ -106,6 +109,9 @@ def main():
     if os.path.isdir(exp_dir):
         shutil.rmtree(exp_dir)
     os.makedirs(exp_dir)
+    
+    with open(os.path.join(exp_dir, "config.yaml"), 'w') as fp: 
+        yaml.dump(cfg, fp, default_flow_style=False)
 
     if args.gpu:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -156,9 +162,17 @@ def main():
         betas=config.betas,
         eps=config.eps,
     )
+    
+    scheduler = ReduceLROnPlateau(
+        optimizer, 
+        mode='min', 
+        factor=0.1, 
+        patience=7, 
+        verbose=True,
+        min_lr=0.000000001,
+    )
 
     loss_fn = nn.CrossEntropyLoss().to(device)
-
 
     for i in range(config.epochs):
         print(f"Epoch {i+1}")
@@ -183,6 +197,8 @@ def main():
                 "val_accuracy": val_acc,
             }
         )
+        
+        scheduler.step(val_loss)
 
     checkpoints_dir = os.path.join(exp_dir, "checkpoints")
     if not os.path.isdir(checkpoints_dir):

@@ -4,35 +4,30 @@ import torch
 import random
 import shutil
 import cv2
-import json 
-from sklearn.metrics import (confusion_matrix, 
-                             ConfusionMatrixDisplay, 
-                             classification_report)
 import matplotlib.pyplot as plt
 
 from dataset import ImagenetteDataset
 from config import get_cfg_defaults
-
-
-label2label = {
-    'n01440764': 'fish',
-    'n02102040': 'dog',
-    'n02979186': 'radio',
-    'n03000684': 'chain saw',
-    'n03028079': 'church',
-    'n03394916': 'french horn',
-    'n03417042': 'garbage truck',
-    'n03425413': 'tank column',
-    'n03445777': 'golf ball',
-    'n03888257': 'paraglider',
-}
-
     
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("exp_dir", help="Path to experiment directory", type=str)
-    parser.add_argument("--config", help="Path to alternative config.yaml", type=str)
+    parser.add_argument(
+        "src", 
+        help="Path to experiment directory or to an image", 
+        type=str,
+    )
+    parser.add_argument(
+        "--num_samples", 
+        help="Number of samples to plot", 
+        type=int, 
+        default=10,
+    )
+    parser.add_argument(
+        "--config", 
+        help="Path to alternative config.yaml", 
+        type=str,
+    )
     args = parser.parse_args()
     
     cfg = get_cfg_defaults()
@@ -45,28 +40,24 @@ def main():
     cfg.freeze()
     print(cfg)
 
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     checkpoint = os.path.join(args.exp_dir, "checkpoints/final.pth")
     sample_imgs_dir = os.path.join(args.exp_dir, "sample_images")
     if os.path.isdir(sample_imgs_dir):
         shutil.rmtree(sample_imgs_dir)
     os.makedirs(sample_imgs_dir)
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+    
     model = torch.load(checkpoint)
     model.to(device)
     model.eval()
-
+    
     val_dataset = ImagenetteDataset(
         config=cfg,
         mode='val',
     )
-
-    print(f"Validation samples: {len(val_dataset)}")
-
+    
     img_idxs = random.sample([i for i in range(len(val_dataset))], 10)
-
-    print(img_idxs)
 
     for idx in img_idxs:
         img, label = val_dataset[idx]

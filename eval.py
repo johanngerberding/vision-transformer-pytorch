@@ -9,9 +9,16 @@ from sklearn.metrics import (confusion_matrix,
 import matplotlib.pyplot as plt 
 
 from config import get_cfg_defaults
+from dataset import ImagenetteDataset
 
 
-def eval(model, dataset, device, labelmap: dict, exp_dir: str):
+def eval(
+    model, 
+    dataset, 
+    device, 
+    labelmap: list, 
+    exp_dir: str
+):
     preds = []
     gts = []
     for img, label in dataset:
@@ -26,7 +33,7 @@ def eval(model, dataset, device, labelmap: dict, exp_dir: str):
     cm = confusion_matrix(gts, preds)
     disp = ConfusionMatrixDisplay(
         confusion_matrix=cm, 
-        display_labels=[v for v in labelmap.values()],
+        display_labels=labelmap,
     )
     plt.figure(figsize=(16,16))
     disp.plot()
@@ -38,7 +45,7 @@ def eval(model, dataset, device, labelmap: dict, exp_dir: str):
     cls_report = classification_report(
         gts, 
         preds, 
-        target_names=[v for v in labelmap.values()], 
+        target_names=labelmap, 
         output_dict=True,
     )
     print(cls_report)
@@ -52,7 +59,7 @@ def eval(model, dataset, device, labelmap: dict, exp_dir: str):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("exp_dir", help="Experiment directory", type=str)
-    parser.add_argument("--model", help="Model checkpoint filename", type=str, default="final.pth")
+    parser.add_argument("--model", help="Model checkpoint filename", type=str)
     parser.add_argument("--config", help="Path to alternative config.yaml", type=str)
     parser.add_argument("--gpu", help="Use gpu device if possible", default=True)
     args = parser.parse_args()
@@ -76,8 +83,10 @@ def main():
     model.to(device)
     model.eval()
     
+    dataset = ImagenetteDataset(config=cfg, mode='val')
+    labelmap = cfg.DATA.LABELNAMES
     
-    
+    eval(model, dataset, device, labelmap, args.exp_dir)
     
 
 if __name__ == "__main__":

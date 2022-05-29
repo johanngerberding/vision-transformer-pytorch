@@ -31,7 +31,7 @@ class ImagenetteDataset(torch.utils.data.Dataset):
         self.mode = mode
         self.imgs = self.load_annos(config.DATA.ANNOS, self.mode)
         self.transform = get_transform(self.mode, config.DATA.IMG_SIZE)
-        self.label2id = {l: i for i,l in config.DATA.LABEL2ID}
+        self.label2id = {l: i for i,l in enumerate(config.DATA.LABEL2ID)}
         self.patch_size = config.DATA.PATCH_SIZE
 
 
@@ -72,6 +72,14 @@ def get_transform(mode: str, img_size: tuple):
     if mode == 'train':
         return A.Compose([
             A.RandomCrop(320, 320, always_apply=True, p=1.0),
+            A.HorizontalFlip(p=0.5),
+            A.RandomBrightnessContrast(p=0.3),
+            A.ColorJitter(p=0.4),
+            A.GaussianBlur(p=0.3),
+            A.RGBShift(p=0.3),
+            A.Rotate(p=0.3),
+            A.ChannelDropout(p=0.3),
+            A.Cutout(p=0.3),
             A.Resize(img_size[0], img_size[1], p=1.0),
             A.Normalize(
                 mean=(0.485, 0.456, 0.406),
