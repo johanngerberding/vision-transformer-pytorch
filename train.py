@@ -1,3 +1,4 @@
+import argparse
 import os
 import tqdm
 import datetime
@@ -8,6 +9,7 @@ from torch.utils.data import DataLoader
 from dataset import ImagenetteDataset, get_transform
 from model import VisionTransformer
 from utils import get_number_params
+from config import get_cfg_defaults 
 
 import wandb
 
@@ -73,78 +75,54 @@ def val_epoch(model, dataloader, loss_fn, device):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", help="config.yaml different from default config.py", type=str)
+    parser.add_argument("--gpu", help="Use gpu or cpu, default is True.", type=bool, default=True)
+    args = parser.parse_args()
+    
+    cfg = get_cfg_defaults()
+    cfg.freeze()
+    print(cfg)
+    
     wandb.init(
         project="vision-transformer-pytorch",
         entity="johanngerber",
         config = {
-            "learning_rate": 0.0001,
-            "epochs": 100,
-            "train_batch_size": 256,
-            "val_batch_size": 128,
-            "image_size": (320,320),
-            "patch_size": 32,
-            "num_layers": 2,
-            "betas": (0.9, 0.999),
-            "eps": 1e-08,
+            "learning_rate": cfg.TRAIN.BASE_LR,
+            "epochs": cfg.TRAIN.N_EPOCHS,
+            "train_batch_size": cfg.TRAIN.BATCH_SIZE,
+            "val_batch_size": cfg.VAL.BATCH_SIZE,
+            "image_size": cfg.DATA.IMG_SIZE,
+            "patch_size": cfg.DATA.PATCH_SIZE,
+            "num_layers": cfg.MODEL.NUM_LAYERS,
+            "betas": cfg.OPTIM.BETAS,
+            "eps": cfg.OPTIM.EPS,
         },
     )
     config = wandb.config
 
-    """
-    sweep_config = {
-        'method': 'random',
-        'metric': {
-            'name': 'val_loss',
-            'goal': 'minimize'
-        },
-        'parameters': {
-
-        }
-    }
-    """
-
-    root = "/home/johann/sonstiges/vision-transformer-pytorch"
-    data = os.path.join(root, "data")
-    imagenette = os.path.join(data, "imagenette2-320")
-    annos = os.path.join(imagenette, "noisy_imagenette.csv")
     today = datetime.datetime.now().strftime("%Y-%m-%d")
-    exp_dir = os.path.join(root, "exps/{}".format(today))
+    exp_dir = os.path.join(cfg.PROJECT.ROOT, "exps/{}".format(today))
     if os.path.isdir(exp_dir):
         shutil.rmtree(exp_dir)
     os.makedirs(exp_dir)
 
-    label2id = {
-        f: i for i, f in enumerate(list(sorted(os.listdir(
-            os.path.join(imagenette, 'train')
-        ))))
-    }
-
-    input_dim = int(config.patch_size**2 * 3)
-    max_seq_len = int(
-        (config.image_size[0] / config.patch_size) *
-        (config.image_size[1] / config.patch_size))
-
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(label2id)
+    if args.gpu:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    else: 
+        device = torch.device('cpu')
+    print(f"Device: {device}")
 
     train_dataset = ImagenetteDataset(
-        root=imagenette,
-        annos=annos,
+        config=cfg,
         mode='train',
-        label2id=label2id,
-        img_size=config.image_size,
-        patch_size=config.patch_size,
     )
 
     print(f"Training samples: {len(train_dataset)}")
 
     val_dataset = ImagenetteDataset(
-        root=imagenette,
-        annos=annos,
+        config=cfg,
         mode='val',
-        label2id=label2id,
-        img_size=config.image_size,
-        patch_size=config.patch_size,
     )
 
     print(f"Validation samples: {len(val_dataset)}")
@@ -153,7 +131,7 @@ def main():
         dataset=train_dataset,
         batch_size=config.train_batch_size,
         shuffle=True,
-        num_workers=8,
+        num_workers=cfg.SYSTEM.NUM_WORKERS,
     )
 
     print(f"Length train dataloader: {len(train_dataloader)}")
@@ -162,14 +140,10 @@ def main():
         dataset=val_dataset,
         batch_size=config.val_batch_size,
         shuffle=False,
-        num_workers=4,
+        num_workers=cfg.SYSTEM.NUM_WORKERS,
     )
 
-    model = VisionTransformer(
-        max_seq_len=max_seq_len,
-        num_layers=config.num_layers,
-        input_dim=input_dim,
-    )
+    model = VisionTransformer(cfg)
     model.to(device)
     model.train()
 

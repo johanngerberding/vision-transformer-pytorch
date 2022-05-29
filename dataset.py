@@ -24,20 +24,15 @@ def preprocess(img, patch_size: int):
 class ImagenetteDataset(torch.utils.data.Dataset):
     def __init__(
         self,
-        root: str,
-        annos: str,
+        config: str,
         mode: str,
-        label2id: dict,
-        img_size: tuple,
-        patch_size: int,
-        transform=None,
     ):
-        self.root = root
+        self.root = config.DATA.ROOT
         self.mode = mode
-        self.imgs = self.load_annos(annos, self.mode)
-        self.transform = get_transform(self.mode, img_size)
-        self.label2id = label2id
-        self.patch_size = patch_size
+        self.imgs = self.load_annos(config.DATA.ANNOS, self.mode)
+        self.transform = get_transform(self.mode, config.DATA.IMG_SIZE)
+        self.label2id = {l: i for i,l in config.DATA.LABEL2ID}
+        self.patch_size = config.DATA.PATCH_SIZE
 
 
     def __getitem__(self, idx):

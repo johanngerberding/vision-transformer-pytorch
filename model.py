@@ -1,41 +1,30 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dataset import preprocess
 
 
 class VisionTransformer(nn.Module):
-    def __init__(
-        self,
-        max_seq_len: int,
-        num_layers: int,
-        input_dim: int,
-        d_model: int = 1024,
-        n_head: int = 8,
-        dim_feedforward: int = 2048,
-        n_classes: int = 10,
-        pdrop=0.1,
-    ):
+    def __init__(self, config):
         super(VisionTransformer, self).__init__()
-        self.embed = nn.Linear(input_dim, d_model)
-        self.pos = nn.Parameter(torch.zeros(1, max_seq_len + 1, d_model))
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, d_model))
+        self.embed = nn.Linear(config.MODEL.INPUT_DIM, config.MODEL.D_MODEL)
+        self.pos = nn.Parameter(torch.zeros(1, config.MODEL.MAX_SEQ_LEN + 1, config.MODEL.D_MODEL))
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, config.MODEL.D_MODEL))
 
         self.transformer_layer = nn.TransformerEncoderLayer(
-            d_model=d_model,
-            nhead=n_head,
-            dim_feedforward=dim_feedforward,
-            dropout=pdrop,
+            d_model=config.MODEL.D_MODEL,
+            nhead=config.MODEL.NUM_HEADS,
+            dim_feedforward=config.MODEL.D_FF,
+            dropout=config.MODEL.DROPOUT,
             activation=F.gelu,
             batch_first=True,
         )
         self.transformer = nn.TransformerEncoder(
             self.transformer_layer,
-            num_layers=num_layers)
+            num_layers=config.MODEL.NUM_LAYERS)
 
-        self.mlp = nn.Linear(d_model, n_classes)
-        self.drop = nn.Dropout(p=pdrop)
-        self.norm = nn.LayerNorm(d_model, eps=1e-6)
+        self.mlp = nn.Linear(config.MODEL.D_MODEL, config.DATA.NUM_CLASSES)
+        self.drop = nn.Dropout(p=config.MODEL.DROPOUT)
+        self.norm = nn.LayerNorm(config.MODEL.D_MODEL, eps=1e-6)
 
 
     def forward(self, x):

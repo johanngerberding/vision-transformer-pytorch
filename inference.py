@@ -1,3 +1,4 @@
+import argparse
 import os
 import torch
 import random
@@ -9,8 +10,8 @@ from sklearn.metrics import (confusion_matrix,
                              classification_report)
 import matplotlib.pyplot as plt
 
-from model import VisionTransformer
 from dataset import ImagenetteDataset
+from config import get_cfg_defaults
 
 
 label2label = {
@@ -26,56 +27,26 @@ label2label = {
     'n03888257': 'paraglider',
 }
 
-
-
-def eval(model, dataset, device, labelmap: dict, exp_dir: str):
-    preds = []
-    gts = []
-    for img, label in dataset:
-        img = img.unsqueeze(0).to(device)
-        with torch.no_grad():
-            pred = model(img)
-
-        pred_label = torch.argmax(pred, dim=1)
-        preds.append(pred_label.item())
-        gts.append(label.item())
-
-    cm = confusion_matrix(gts, preds)
-    disp = ConfusionMatrixDisplay(
-        confusion_matrix=cm, 
-        display_labels=[v for v in labelmap.values()],
-    )
-    plt.figure(figsize=(14,16))
-    disp.plot()
-    plt.xticks(rotation=90)
-    plt.tight_layout()
-    plt.savefig(os.path.join(exp_dir, "confusion_matrix.jpg"))
-    
-    # classification report 
-    cls_report = classification_report(
-        gts, 
-        preds, 
-        target_names=[v for v in labelmap.values()], 
-        output_dict=True,
-    )
-    print(cls_report)
-    print(type(cls_report))
-    
-    with open(os.path.join(exp_dir, "classification-report.json"), 'w') as fp: 
-        json.dump(cls_report, fp, indent=4)
-    
-    
     
 
 def main():
-    root = "/home/johann/sonstiges/vision-transformer-pytorch"
-    data = os.path.join(root, "data")
-    imagenette = os.path.join(data, "imagenette2-320")
-    annos = os.path.join(imagenette, "noisy_imagenette.csv")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("exp_dir", help="Path to experiment directory", type=str)
+    parser.add_argument("--config", help="Path to alternative config.yaml", type=str)
+    args = parser.parse_args()
+    
+    cfg = get_cfg_defaults()
+    
+    if args.config:
+        cfg.merge_from_file(args.config)
+    elif os.path.isfile(os.path.join(args.exp_dir, "config.yaml")):
+        cfg.merge_from_file(os.path.join(args.exp_dir, "config.yaml"))
+    
+    cfg.freeze()
+    print(cfg)
 
-    exp_dir = os.path.join(root, "exps/2022-05-28")
-    checkpoint = os.path.join(exp_dir, "checkpoints/final.pth")
-    sample_imgs_dir = os.path.join(exp_dir, "sample_images")
+    checkpoint = os.path.join(args.exp_dir, "checkpoints/final.pth")
+    sample_imgs_dir = os.path.join(args.exp_dir, "sample_images")
     if os.path.isdir(sample_imgs_dir):
         shutil.rmtree(sample_imgs_dir)
     os.makedirs(sample_imgs_dir)
@@ -88,7 +59,7 @@ def main():
 
     label2id = {
         f: i for i, f in enumerate(list(sorted(os.listdir(
-            os.path.join(imagenette, 'train')
+            os.path.join(cfg.DATA.ROOT, 'train')
         ))))
     }
 
@@ -98,17 +69,9 @@ def main():
     
     labelmap = {k: label2label[v] for k,v in id2label.items()}
 
-    input_dim = int(32**2 * 3)
-    max_seq_len = int((320 / 32) * (320 / 32))
-
-
     val_dataset = ImagenetteDataset(
-        root=imagenette,
-        annos=annos,
+        config=cfg,
         mode='val',
-        label2id=label2id,
-        img_size=(320,320),
-        patch_size=32,
     )
 
     print(f"Validation samples: {len(val_dataset)}")
@@ -126,8 +89,8 @@ def main():
             pred = model(img)
 
         pred_label = torch.argmax(pred, dim=1)
-        prediction = label2label[id2label[pred_label.item()]]
-        gt = label2label[id2label[label.item()]]
+        prediction = cfg.DATA.LABELNAMES[pred_label.item()]
+        gt = cfg.DATA.LABELNAMES[label.item()]
         print(img_path)
         print(f"Ground truth: {gt}  <> Prediction: {prediction}")
 
@@ -140,10 +103,7 @@ def main():
         plt.axis('off')
         out = os.path.join(sample_imgs_dir, os.path.split(img_path)[1])
         plt.savefig(out)
-        
-    eval(model, val_dataset, device, labelmap, exp_dir)
+
     
-
-
 if __name__ == "__main__":
     main()
