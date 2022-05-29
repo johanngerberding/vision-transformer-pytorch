@@ -57,18 +57,6 @@ def main():
     model.to(device)
     model.eval()
 
-    label2id = {
-        f: i for i, f in enumerate(list(sorted(os.listdir(
-            os.path.join(cfg.DATA.ROOT, 'train')
-        ))))
-    }
-
-    id2label = {
-        v: k for k, v in label2id.items()
-    }
-    
-    labelmap = {k: label2label[v] for k,v in id2label.items()}
-
     val_dataset = ImagenetteDataset(
         config=cfg,
         mode='val',
