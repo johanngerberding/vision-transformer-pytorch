@@ -69,6 +69,9 @@ class ImagenetteDataset(torch.utils.data.Dataset):
         return imgs
 
 
+    def get_img_path(self, idx: int):
+        return os.path.join(self.root, self.imgs[idx])
+
 
 def get_transform(mode: str, img_size: tuple):
     if mode == 'train':
