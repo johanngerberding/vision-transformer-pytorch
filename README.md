@@ -1,4 +1,4 @@
-# Vision-Transformer (WIP)
+# Vision-Transformer
 
 This repo contains my Vision-Transformer implementation. You can train the model yourself after you have downloaded the [dataset](https://github.com/fastai/imagenette). You can use my download script `download_dataset.sh` which will create a `data` directory. Sometimes Pytorch causes problems with the `requirements.txt`. If thats the case for you, simply delete the torch, torchvision and torchaudio lines in the `requirements.txt` and use the install command from their [website](https://pytorch.org/get-started/locally/).
 
@@ -20,6 +20,16 @@ You should take a look at the `config.py` if you want to change any hyperparamet
 ## Results
 
 After 200 epochs of training the basic Vision Transformer we reach the results you can see down below. I think for such a small dataset this is absolutely okay.
+
+### Loss 
+
+<img src="assets/loss-200-eps.jpg" alt="Train and validation loss plots for 200 epochs" width="70%" class="center">
+
+### Accuracy
+
+<img src="assets/accuracy-200-eps.jpg" alt="Train and validation accuracy plots for 200 epochs" width="70%" class="center">
+
+### Confusion Matrix
 
 <img src="assets/confusion-matrix-200-eps.jpg" alt="Confusion matrix for Imagenette validation dataset" width="75%" class="center">
 
