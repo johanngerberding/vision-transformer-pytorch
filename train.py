@@ -3,7 +3,7 @@ import os
 import tqdm
 import datetime
 import shutil
-import yaml 
+import yaml
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -12,7 +12,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from dataset import ImagenetteDataset
 from model import VisionTransformer
 from utils import get_number_params
-from config import get_cfg_defaults 
+from config import get_cfg_defaults
 
 import wandb
 
@@ -82,11 +82,11 @@ def main():
     parser.add_argument("--config", help="config.yaml different from default config.py", type=str)
     parser.add_argument("--gpu", help="Use gpu or cpu, default is True.", type=bool, default=True)
     args = parser.parse_args()
-    
+
     cfg = get_cfg_defaults()
     cfg.freeze()
     print(cfg)
-    
+
     wandb.init(
         project="vision-transformer-pytorch",
         entity="johanngerber",
@@ -109,13 +109,13 @@ def main():
     if os.path.isdir(exp_dir):
         shutil.rmtree(exp_dir)
     os.makedirs(exp_dir)
-    
-    with open(os.path.join(exp_dir, "config.yaml"), 'w') as fp: 
+
+    with open(os.path.join(exp_dir, "config.yaml"), 'w') as fp:
         yaml.dump(cfg, fp, default_flow_style=False)
 
     if args.gpu:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    else: 
+    else:
         device = torch.device('cpu')
     print(f"Device: {device}")
 
@@ -162,12 +162,12 @@ def main():
         betas=config.betas,
         eps=config.eps,
     )
-    
+
     scheduler = ReduceLROnPlateau(
-        optimizer, 
-        mode='min', 
-        factor=0.1, 
-        patience=7, 
+        optimizer,
+        mode='min',
+        factor=0.1,
+        patience=7,
         verbose=True,
         min_lr=0.000000001,
     )
@@ -197,7 +197,7 @@ def main():
                 "val_accuracy": val_acc,
             }
         )
-        
+
         scheduler.step(val_loss)
 
     checkpoints_dir = os.path.join(exp_dir, "checkpoints")
