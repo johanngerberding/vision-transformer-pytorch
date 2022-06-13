@@ -23,11 +23,11 @@ After 200 epochs of training the basic Vision Transformer we reach the results y
 
 ### Loss 
 
-<img src="assets/loss-200-eps.jpg" alt="Train and validation loss plots for 200 epochs" width="70%" class="center">
+<img src="assets/loss-200-eps.png" alt="Train and validation loss plots for 200 epochs" width="70%" class="center">
 
 ### Accuracy
 
-<img src="assets/accuracy-200-eps.jpg" alt="Train and validation accuracy plots for 200 epochs" width="70%" class="center">
+<img src="assets/accuracy-200-eps.png" alt="Train and validation accuracy plots for 200 epochs" width="70%" class="center">
 
 ### Confusion Matrix
 
